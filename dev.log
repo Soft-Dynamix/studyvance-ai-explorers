@@ -1,1 +1,26 @@
-nohup: failed to run command './node_modules/.bin/next': No such file or directory
+▲ Next.js 16.4.1 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://21.0.10.174:3000
+- Environments: .env
+✓ Ready in 299ms
+✓ Running next.config.ts took 38ms
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+
+  We detected TypeScript in your project and reconfigured your tsconfig.json file for you.
+  The following suggested values were added to your tsconfig.json. These values can be changed to fit your project's needs:
+
+  	- include was updated to add '.next/dev/types/**/*.ts'
+
+  The following mandatory changes were made to your tsconfig.json:
+
+  	- jsx was set to react-jsx (next.js uses the React automatic runtime)
+
+
+○ Compiling / ...
+ GET / 200 in 461ms (next.js: 198ms, application-code: 263ms)
+ GET / 200 in 26ms (next.js: 1.2ms, application-code: 25ms)
+ POST /api/setup 200 in 264ms (next.js: 56ms, application-code: 208ms)
