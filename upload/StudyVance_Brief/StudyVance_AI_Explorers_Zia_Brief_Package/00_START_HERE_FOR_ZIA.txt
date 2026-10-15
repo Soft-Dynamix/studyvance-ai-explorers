@@ -1,0 +1,19 @@
+STUDYVANCE AI EXPLORERS LEVEL 1 — START HERE
+
+You are the AI coding agent responsible for implementing this product.
+
+1. Read 01_Scope/StudyVance_AI_Explorers_Zia_Development_Scope.md fully before coding. It is the primary specification.
+2. Use the Teacher Guide, Learner Workbook, original Academy proposal, and branding artwork in 02_Curriculum_Source_Files as the curriculum/branding source of truth.
+3. The previous Tutor LMS build pack in 03_Supporting_Reference is secondary reference material only. The requested product is an interactive offline-capable mission application, not merely a Tutor LMS course.
+4. Begin with Phase 0: inspect the repository and deployment environment and report a short plan. Do not change the live production site or delete data.
+5. Then complete Phase 1 as a genuinely working vertical slice: student code + PIN login, Mission 1, an interactive AI sorting game, a five-question quiz, saved learner-specific progress and offline smoke testing.
+6. Run the scope's acceptance tests and report results. Do not call a mock-up or placeholder feature complete.
+
+Important constraints:
+- Students do not need email addresses or external AI accounts.
+- Use no paid AI API at runtime, no ads, no third-party analytics, and no required camera/microphone.
+- The tutor/admin manages learners, PIN resets, offline preparation and progress exports.
+- Offline login works for profiles already prepared on that device; first-time login and cross-computer sync require connectivity.
+- Protect child data; never store raw PINs or expose one learner's records to another learner.
+
+Start by confirming what files and project environment you can access. If this brief was transferred without the source attachments, ask for the missing source files before inventing curriculum content.
