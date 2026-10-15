@@ -1,0 +1,100 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@custom-variant dark (&:is(.dark *));
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-navy: var(--navy);
+  --color-turquoise: var(--turquoise);
+  --color-sunshine: var(--sunshine);
+  --color-cream: var(--cream);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+:root {
+  --radius: 0.875rem;
+  --navy: #0b1f3a;
+  --navy-soft: #14305a;
+  --turquoise: #18c5d4;
+  --turquoise-soft: #6fe3ee;
+  --sunshine: #ffd23f;
+  --sunshine-soft: #ffe48a;
+  --cream: #fffdf7;
+  --background: #fffdf7;
+  --foreground: #0b1f3a;
+  --card: #ffffff;
+  --card-foreground: #0b1f3a;
+  --popover: #ffffff;
+  --popover-foreground: #0b1f3a;
+  --primary: #0b1f3a;
+  --primary-foreground: #fffdf7;
+  --secondary: #e6f7f9;
+  --secondary-foreground: #0b1f3a;
+  --muted: #f1f5f9;
+  --muted-foreground: #5b6b85;
+  --accent: #18c5d4;
+  --accent-foreground: #0b1f3a;
+  --destructive: #e5484d;
+  --border: #d6e0ec;
+  --input: #e3edf6;
+  --ring: #18c5d4;
+  --sidebar: #0b1f3a;
+  --sidebar-foreground: #fffdf7;
+  --sidebar-primary: #18c5d4;
+  --sidebar-primary-foreground: #0b1f3a;
+  --sidebar-accent: #14305a;
+  --sidebar-accent-foreground: #fffdf7;
+  --sidebar-border: #1d3866;
+  --sidebar-ring: #18c5d4;
+}
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground; }
+}
+@layer utilities {
+  .bg-navy { background-color: var(--navy); }
+  .bg-navy-soft { background-color: var(--navy-soft); }
+  .bg-turquoise { background-color: var(--turquoise); }
+  .bg-turquoise-soft { background-color: var(--turquoise-soft); }
+  .bg-sunshine { background-color: var(--sunshine); }
+  .bg-sunshine-soft { background-color: var(--sunshine-soft); }
+  .bg-cream { background-color: var(--cream); }
+  .text-navy { color: var(--navy); }
+  .text-turquoise { color: var(--turquoise); }
+  .text-sunshine { color: var(--sunshine); }
+  .text-cream { color: var(--cream); }
+  .border-navy { border-color: var(--navy); }
+  .border-turquoise { border-color: var(--turquoise); }
+  .border-sunshine { border-color: var(--sunshine); }
+  .ring-turquoise { --tw-ring-color: var(--turquoise); }
+  .font-display { font-weight: 800; letter-spacing: -0.02em; }
+  .bg-adventure-grid { background-image: radial-gradient(circle at 1px 1px, rgba(24,197,212,0.18) 1.5px, transparent 0); background-size: 22px 22px; }
+  .bg-stars { background-image: radial-gradient(2px 2px at 20% 30%, rgba(255,210,63,0.9) 50%, transparent 51%), radial-gradient(2px 2px at 75% 60%, rgba(24,197,212,0.9) 50%, transparent 51%), radial-gradient(1.5px 1.5px at 40% 80%, rgba(255,255,255,0.85) 50%, transparent 51%), radial-gradient(1.5px 1.5px at 90% 20%, rgba(255,210,63,0.7) 50%, transparent 51%); background-repeat: no-repeat; }
+  .scroll-area-kid { scrollbar-width: thin; scrollbar-color: var(--turquoise) transparent; }
+  .scroll-area-kid::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scroll-area-kid::-webkit-scrollbar-thumb { background-color: var(--turquoise); border-radius: 8px; }
+  .scroll-area-kid::-webkit-scrollbar-track { background: transparent; }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-sv-pop, .animate-sv-float { animation: none !important; }
+  }
+}

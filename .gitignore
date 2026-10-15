@@ -1,2 +1,35 @@
-skills/
+# dependencies
 node_modules/
+.pnp
+.pnp.*
+
+# next.js
+.next/
+out/
+build/
+dist/
+
+# env
+.env
+.env.local
+.env*.local
+
+# database
+db/*.db
+db/*.db-journal
+
+# misc
+.DS_Store
+*.pem
+*.log
+.idea/
+.vscode/
+
+# google
+download/*
+!download/.gitkeep
+skills/
+agent-ctx/
+dev.log
+tool-results/
+*.tsbuildinfo

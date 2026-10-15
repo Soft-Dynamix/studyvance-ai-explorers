@@ -1,0 +1,95 @@
+// StudyVance AI Explorers — Level 1 Prisma schema (SQLite)
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+model Cohort {
+  id        String   @id @default(cuid())
+  name      String
+  gradeBand String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  learners Learner[]
+}
+model Learner {
+  id          String   @id @default(cuid())
+  cohortId    String
+  learnerCode String   @unique
+  nickname    String
+  grade       String
+  avatarId    String   @default("avatar-1")
+  pinHash     String
+  pinSalt     String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  cohort         Cohort           @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  progressEvents ProgressEvent[]
+  learnerState   LearnerState?
+  helpFlags     TutorHelpFlag[]
+  projects      LearnerProject[]
+  @@index([cohortId])
+}
+model ProgressEvent {
+  id                String   @id @default(cuid())
+  eventId           String   @unique
+  learnerId         String
+  missionId         String
+  activityId        String
+  eventType         String
+  score             Int?
+  maxScore          Int?
+  payloadJson       String   @default("{}")
+  occurredAtClient  DateTime
+  receivedAtServer  DateTime @default(now())
+  appVersion        String   @default("1.0.0")
+  learner Learner @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  @@index([learnerId, missionId])
+}
+model LearnerState {
+  learnerId      String   @id
+  missionsJson   String   @default("{}")
+  badgesJson     String   @default("[]")
+  contentVersion String   @default("1.0.0")
+  lastSyncAt     DateTime?
+  updatedAt      DateTime @updatedAt
+  learner Learner @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+}
+model TutorHelpFlag {
+  id         String    @id @default(cuid())
+  learnerId  String
+  missionId  String
+  category   String
+  note       String?
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+  resolvedBy String?
+  learner Learner @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  @@index([learnerId])
+  @@index([resolvedAt])
+}
+model LearnerProject {
+  id             String   @id @default(cuid())
+  learnerId      String
+  missionId      String   @default("m1")
+  version        Int      @default(1)
+  storyText      String
+  drawingData    String?
+  assistanceNote String   @default("own_first_draft")
+  updatedAt      DateTime @updatedAt
+  learner Learner @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  @@index([learnerId])
+}
+model Tutor {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  pinHash   String
+  pinSalt   String
+  role      String   @default("tutor")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
