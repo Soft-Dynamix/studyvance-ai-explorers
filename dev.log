@@ -44,3 +44,22 @@ Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
  POST /api/setup 200 in 192ms (next.js: 31ms, application-code: 162ms)
  POST /api/auth/login 200 in 58ms (next.js: 1.1ms, application-code: 57ms)
  POST /api/auth/login 200 in 54ms (next.js: 0.8ms, application-code: 54ms)
+ GET / 200 in 33ms (next.js: 1.2ms, application-code: 32ms)
+ GET / 200 in 30ms (next.js: 1.0ms, application-code: 29ms)
+[browser] Image with src "/assets/mascot/vance-robot.png" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+ GET /api/auth/me 200 in 4ms (next.js: 1.0ms, application-code: 3ms)
+ GET /api/auth/me 200 in 4ms (next.js: 0.9ms, application-code: 3ms)
+ POST /api/auth/login 200 in 58ms (next.js: 1.1ms, application-code: 57ms)
+ GET /api/auth/me 200 in 4ms (next.js: 1.1ms, application-code: 3ms)
+[browser] Image with src "/assets/avatars/avatar-2.png" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
+[browser] Image with src "/assets/avatars/avatar-1.png" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
+[browser] Image with src "/assets/avatars/avatar-3.png" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
+[browser] Image with src "/assets/avatars/avatar-4.png" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
+[browser] Image with src "/assets/avatars/avatar-5.png" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
+[browser] Image with src "/assets/avatars/avatar-6.png" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
+ POST /api/learners/avatar 401 in 47ms (next.js: 41ms, application-code: 6ms)
+ POST /api/progress 401 in 36ms (next.js: 31ms, application-code: 5ms)
+ POST /api/progress 401 in 3ms (next.js: 0.8ms, application-code: 3ms)
+ POST /api/progress 401 in 3ms (next.js: 0.7ms, application-code: 2ms)
+✓ Compiled in 782ms
