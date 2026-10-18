@@ -28,178 +28,104 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
   const [playing, setPlaying] = React.useState(false)
   const [transcriptOpen, setTranscriptOpen] = React.useState(false)
   const [progress, setProgress] = React.useState(0)
-  const [audioError, setAudioError] = React.useState(false)
   const recordedRef = React.useRef(false)
   const videoRef = React.useRef<HTMLVideoElement | null>(null)
-  const audioRef = React.useRef<HTMLAudioElement | null>(null)
 
   const scene = scenes[idx]
   const total = scenes.length
 
-  // Play scene: start video (looping) + audio narration
+  // Play scene
   const playScene = React.useCallback((i: number) => {
-    const sc = scenes[i]
-    if (!sc) return
-
-    // Stop existing audio
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current = null
-    }
+    const video = videoRef.current
+    if (!video) return
 
     setProgress(0)
-    setAudioError(false)
 
-    // Start video (loops while audio plays)
-    const video = videoRef.current
-    if (video) {
-      video.currentTime = 0
-      video.muted = true  // Video is always muted — audio comes from WAV file
-      video.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
-    }
+    // Set volume based on sound preference
+    video.muted = !soundOn
+    video.volume = soundOn ? 1.0 : 0
 
-    // Play audio narration from WAV file
-    if (soundOn) {
-      const audio = new Audio(sc.audio)
-      audioRef.current = audio
+    // Play the video (it contains both visual + audio)
+    video.play().then(() => {
+      setPlaying(true)
+    }).catch(() => {
+      setPlaying(false)
+    })
+  }, [soundOn])
 
-      // Track progress
-      audio.addEventListener('timeupdate', () => {
-        if (audio.duration && isFinite(audio.duration)) {
-          setProgress((audio.currentTime / audio.duration) * 100)
-        }
-      })
-
-      // When audio ends → stop video + auto-advance
-      audio.addEventListener('ended', () => {
-        setProgress(100)
-        if (videoRef.current) videoRef.current.pause()
-        setPlaying(false)
-        if (i < scenes.length - 1) {
-          setTimeout(() => {
-            setIdx(i + 1)
-            setPlaying(true)
-          }, 500)
-        }
-      })
-
-      // Handle audio errors
-      audio.addEventListener('error', () => {
-        setAudioError(true)
-        // Fallback: timer-based auto-advance
-        const estMs = Math.max(15000, sc.transcript.length * 55)
-        const start = Date.now()
-        const timer = setInterval(() => {
-          const elapsed = Date.now() - start
-          setProgress(Math.min(95, (elapsed / estMs) * 100))
-          if (elapsed >= estMs) {
-            clearInterval(timer)
-            setProgress(100)
-            if (videoRef.current) videoRef.current.pause()
-            if (i < scenes.length - 1) {
-              setIdx(i + 1)
-            } else {
-              setPlaying(false)
-            }
-          }
-        }, 200)
-      })
-
-      // Try to play
-      audio.play().catch(() => {
-        setAudioError(true)
-        // Fallback: timer-based
-        const estMs = Math.max(15000, sc.transcript.length * 55)
-        const start = Date.now()
-        const timer = setInterval(() => {
-          const elapsed = Date.now() - start
-          setProgress(Math.min(95, (elapsed / estMs) * 100))
-          if (elapsed >= estMs) {
-            clearInterval(timer)
-            setProgress(100)
-            if (videoRef.current) videoRef.current.pause()
-            if (i < scenes.length - 1) {
-              setIdx(i + 1)
-            } else {
-              setPlaying(false)
-            }
-          }
-        }, 200)
-      })
-    } else {
-      // No sound: timer-based auto-advance (video still plays)
-      const estMs = Math.max(15000, sc.transcript.length * 55)
-      const start = Date.now()
-      const timer = setInterval(() => {
-        const elapsed = Date.now() - start
-        setProgress(Math.min(95, (elapsed / estMs) * 100))
-        if (elapsed >= estMs) {
-          clearInterval(timer)
-          setProgress(100)
-          if (videoRef.current) videoRef.current.pause()
-          if (i < scenes.length - 1) {
-            setIdx(i + 1)
-          } else {
-            setPlaying(false)
-          }
-        }
-      }, 200)
-    }
-  }, [scenes, soundOn])
-
-  // When scene changes
+  // When scene changes, load new video
   React.useEffect(() => {
     const video = videoRef.current
-    if (video) video.load()
+    if (!video) return
+    video.load()
     if (playing) {
       playScene(idx)
     }
-    return () => {
-      if (audioRef.current) audioRef.current.pause()
-      if (videoRef.current) videoRef.current.pause()
-    }
-  }, [idx, playing, playScene])
+  }, [idx]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Cleanup on unmount
+  // Cleanup
   React.useEffect(() => {
     return () => {
-      if (audioRef.current) audioRef.current.pause()
       if (videoRef.current) videoRef.current.pause()
     }
   }, [])
 
   const togglePlay = () => {
+    const video = videoRef.current
+    if (!video) return
     if (playing) {
+      video.pause()
       setPlaying(false)
-      if (audioRef.current) audioRef.current.pause()
-      if (videoRef.current) videoRef.current.pause()
     } else {
-      playScene(idx)
+      video.play().then(() => setPlaying(true)).catch(() => {})
     }
   }
 
   const replay = () => {
-    if (audioRef.current) audioRef.current.pause()
-    if (videoRef.current) videoRef.current.pause()
+    const video = videoRef.current
+    if (!video) return
+    video.currentTime = 0
     setIdx(0)
     setProgress(0)
     setPlaying(true)
     recordedRef.current = false
-    playScene(0)
+    video.play().then(() => setPlaying(true)).catch(() => {})
   }
 
   const goToScene = (i: number) => {
-    if (audioRef.current) audioRef.current.pause()
-    if (videoRef.current) videoRef.current.pause()
+    const video = videoRef.current
+    if (video) video.pause()
     setPlaying(false)
     setIdx(i)
     setProgress(0)
   }
 
+  // Video time update → progress bar
+  const handleTimeUpdate = () => {
+    const video = videoRef.current
+    if (!video || !video.duration) return
+    setProgress((video.currentTime / video.duration) * 100)
+  }
+
+  // Video ended → auto-advance to next scene
+  const handleVideoEnded = () => {
+    setPlaying(false)
+    setProgress(100)
+    if (idx < total - 1) {
+      setTimeout(() => {
+        setIdx(idx + 1)
+        setPlaying(true)
+      }, 500)
+    }
+  }
+
   const toggleMute = () => {
     const next = !soundOn
     setSoundOn(next)
-    if (audioRef.current) audioRef.current.muted = !next
+    if (videoRef.current) {
+      videoRef.current.muted = !next
+      videoRef.current.volume = next ? 1.0 : 0
+    }
   }
 
   const toggleFullscreen = () => {
@@ -213,7 +139,6 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
       recordedRef.current = true
       void record({ missionId, activityId: 'lesson', eventType: 'completed' })
     }
-    if (audioRef.current) audioRef.current.pause()
     if (videoRef.current) videoRef.current.pause()
     nextScreen()
   }
@@ -226,14 +151,16 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
       <div className="relative flex-1 overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-stars opacity-30" aria-hidden />
         <div className="relative z-10 mx-auto flex h-full max-w-5xl flex-col items-center justify-center gap-4 px-4 py-6">
-          {/* Video player */}
+          {/* Single video player — video contains both visual AND audio */}
           <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-turquoise/30">
             <video
               ref={videoRef}
               className="aspect-video w-full object-contain"
+              onTimeUpdate={handleTimeUpdate}
+              onEnded={handleVideoEnded}
+              onPlay={() => setPlaying(true)}
+              onPause={() => setPlaying(false)}
               playsInline
-              muted
-              loop
               autoPlay={false}
               preload="auto"
             >
@@ -286,7 +213,7 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
             )}
           </div>
 
-          {/* Progress bar (synced to audio duration) */}
+          {/* Progress bar (synced to video currentTime/duration) */}
           <div className="w-full max-w-3xl">
             <div className="relative h-1.5 overflow-hidden rounded-full bg-cream/20">
               <motion.div
