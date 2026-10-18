@@ -219,3 +219,31 @@ Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
 Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
  GET /api/auth/me 200 in 5ms (next.js: 0.9ms, application-code: 4ms)
  GET /api/auth/me 200 in 5ms (next.js: 1.1ms, application-code: 3ms)
+ GET / 200 in 30ms (next.js: 1.2ms, application-code: 29ms)
+ GET / 200 in 27ms (next.js: 0.9ms, application-code: 26ms)
+ GET / 200 in 24ms (next.js: 1.2ms, application-code: 23ms)
+[browser] Image with src "/assets/mascot/vance-robot.png" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+ GET /api/auth/me 200 in 5ms (next.js: 1.0ms, application-code: 4ms)
+ GET /api/auth/me 200 in 4ms (next.js: 0.9ms, application-code: 3ms)
+ GET / 200 in 29ms (next.js: 0.9ms, application-code: 28ms)
+ GET / 200 in 29ms (next.js: 0.9ms, application-code: 28ms)
+ GET / 200 in 28ms (next.js: 1.1ms, application-code: 27ms)
+ GET / 200 in 43ms (next.js: 0.9ms, application-code: 42ms)
+ GET / 200 in 55ms (next.js: 0.8ms, application-code: 54ms)
+ GET / 200 in 32ms (next.js: 4ms, application-code: 29ms)
+ GET / 200 in 28ms (next.js: 0.9ms, application-code: 28ms)
+ GET / 200 in 25ms (next.js: 1.0ms, application-code: 24ms)
+ GET / 200 in 40ms (next.js: 1.2ms, application-code: 39ms)
+ GET / 200 in 27ms (next.js: 3ms, application-code: 24ms)
+ GET / 200 in 25ms (next.js: 0.8ms, application-code: 24ms)
+ GET / 200 in 27ms (next.js: 1.0ms, application-code: 26ms)
+[browser] Image with src "/assets/mascot/vance-robot.png" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+ GET /api/auth/me 200 in 5ms (next.js: 1.0ms, application-code: 4ms)
+ GET /api/auth/me 200 in 4ms (next.js: 0.9ms, application-code: 3ms)
+ GET / 200 in 27ms (next.js: 0.8ms, application-code: 27ms)
+ GET / 200 in 27ms (next.js: 0.9ms, application-code: 26ms)
+[browser] Image with src "/assets/mascot/vance-robot.png" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+ GET /api/auth/me 200 in 4ms (next.js: 0.8ms, application-code: 3ms)
