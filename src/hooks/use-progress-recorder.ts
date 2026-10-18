@@ -26,6 +26,9 @@ type RecordFn = (input: RecordInput) => Promise<void>
  * Records a learner progress activity exactly once per (activityId, eventType)
  * for the lifetime of this hook instance. If offline, the event is queued in
  * localStorage; the queue is flushed automatically when connectivity returns.
+ *
+ * If the session has expired (401), the user is silently redirected to sign-in.
+ * The event is saved locally so it can be synced after re-login.
  */
 export function useProgressRecorder(): RecordFn {
   const learner = useApp((s) => s.learner)
@@ -47,16 +50,21 @@ export function useProgressRecorder(): RecordFn {
       const queued = getQueuedEvents()
       if (queued.length === 0) return
       try {
-        const res = await api<{ accepted?: number }>('/api/progress', {
-          method: 'POST',
-          json: { events: queued },
-        })
-        if (res.accepted !== undefined) {
-          clearQueuedEvents(queued.map((e) => e.eventId))
-          useApp.getState().refreshQueueCount()
+        const res = await api<{ accepted?: string[]; skipped?: string[]; state?: any }>(
+          '/api/progress',
+          { method: 'POST', json: { events: queued } }
+        )
+        if (res?.accepted) clearQueuedEvents(res.accepted)
+        if (res?.skipped) clearQueuedEvents(res.skipped)
+        useApp.getState().refreshQueueCount()
+        if (res?.state) useApp.getState().setState(res.state)
+      } catch (err: any) {
+        // If 401, don't clear — keep for after re-login
+        if (err?.status === 401 || err?.message?.includes('Not signed in')) {
+          // Keep events in queue, but redirect to sign-in
+          useApp.getState().setScreen('signin')
+          toast.info('Your session expired. Please sign in again.')
         }
-      } catch {
-        // Keep the queue; will retry later
       }
     }
     flush()
@@ -69,7 +77,6 @@ export function useProgressRecorder(): RecordFn {
 
   return React.useCallback<RecordFn>(
     async (input) => {
-      // Don't block on learner — still queue the event even if learner is null
       const learnerId = learner?.id ?? 'unknown'
       const key = `${learnerId}:${input.missionId}:${input.activityId}:${input.eventType}`
       if (recordedRef.current.has(key)) return
@@ -87,28 +94,30 @@ export function useProgressRecorder(): RecordFn {
         appVersion: '1.0.0',
       }
 
+      // Always enqueue the event (saved locally)
       enqueueEvent(event)
       useApp.getState().refreshQueueCount()
 
       if (checkIsOnline()) {
         try {
-          const res = await api<{ accepted?: number; skipped?: number; state?: any }>(
+          const res = await api<{ accepted?: string[]; skipped?: string[]; state?: any }>(
             '/api/progress',
             { method: 'POST', json: { events: [event] } }
           )
+          // Success — clear from queue
           clearQueuedEvents([event.eventId])
           useApp.getState().refreshQueueCount()
-          if (res.state) {
+          if (res?.state) {
             useApp.getState().setState(res.state)
           }
         } catch (err: any) {
-          // If 401 (not signed in), clear this event — it can't be synced
           if (err?.status === 401 || err?.message?.includes('Not signed in')) {
-            clearQueuedEvents([event.eventId])
-            useApp.getState().refreshQueueCount()
-            toast.error('Please sign in again to save your progress.')
+            // Session expired — KEEP the event in the queue for after re-login
+            // Redirect to sign-in so user can re-login and continue
+            useApp.getState().setScreen('signin')
+            toast.info('Your session expired. Please sign in again — your progress will be saved.')
           }
-          // Otherwise keep in queue for retry
+          // For other errors, keep in queue for retry (no toast)
         }
       } else {
         toast.info('Saved offline. Will sync when you are connected.')
