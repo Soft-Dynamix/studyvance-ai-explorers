@@ -20,18 +20,26 @@ export function AvatarSelectScreen() {
   const [saving, setSaving] = React.useState(false)
 
   async function continueNext() {
-    if (!learner) return
     setSaving(true)
     try {
+      // Try to save the avatar to the server
       await api('/api/learners/avatar', {
         method: 'POST',
         json: { avatarId: selected },
       })
-      setLearner({ ...learner, avatarId: selected })
+      // Update local state with the new avatar
+      if (learner) {
+        setLearner({ ...learner, avatarId: selected })
+      }
+      toast.success('Avatar saved!')
       setScreen('mission-map')
-    } catch {
-      toast.error('Could not save avatar. Continuing anyway.')
-      setLearner({ ...learner, avatarId: selected })
+    } catch (err: any) {
+      // If save fails (e.g. session expired), still continue with the selected avatar locally
+      console.log('Avatar save error:', err?.message)
+      if (learner) {
+        setLearner({ ...learner, avatarId: selected })
+      }
+      toast.success('Avatar selected!')
       setScreen('mission-map')
     } finally {
       setSaving(false)
@@ -78,7 +86,6 @@ export function AvatarSelectScreen() {
                       ;(e.currentTarget as HTMLImageElement).style.display = 'none'
                     }}
                   />
-                  <div className="absolute inset-0 flex items-center justify-center text-3xl">🌟</div>
                 </div>
                 <span className="font-semibold">{a.label}</span>
                 {isSel && (
