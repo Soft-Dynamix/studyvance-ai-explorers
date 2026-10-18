@@ -69,8 +69,9 @@ export function useProgressRecorder(): RecordFn {
 
   return React.useCallback<RecordFn>(
     async (input) => {
-      if (!learner) return
-      const key = `${learner.id}:${input.missionId}:${input.activityId}:${input.eventType}`
+      // Don't block on learner — still queue the event even if learner is null
+      const learnerId = learner?.id ?? 'unknown'
+      const key = `${learnerId}:${input.missionId}:${input.activityId}:${input.eventType}`
       if (recordedRef.current.has(key)) return
       recordedRef.current.add(key)
 
@@ -100,8 +101,14 @@ export function useProgressRecorder(): RecordFn {
           if (res.state) {
             useApp.getState().setState(res.state)
           }
-        } catch {
-          // Stays in queue, will retry
+        } catch (err: any) {
+          // If 401 (not signed in), clear this event — it can't be synced
+          if (err?.status === 401 || err?.message?.includes('Not signed in')) {
+            clearQueuedEvents([event.eventId])
+            useApp.getState().refreshQueueCount()
+            toast.error('Please sign in again to save your progress.')
+          }
+          // Otherwise keep in queue for retry
         }
       } else {
         toast.info('Saved offline. Will sync when you are connected.')
