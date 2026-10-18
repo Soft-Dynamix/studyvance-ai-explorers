@@ -303,3 +303,4 @@ Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
 [browser] Image with src "/assets/mascot/vance-robot.png" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
 Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
  GET /api/auth/me 200 in 4ms (next.js: 1.0ms, application-code: 3ms)
+ GET /api/auth/me 200 in 4ms (next.js: 1.0ms, application-code: 3ms)
