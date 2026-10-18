@@ -5,7 +5,7 @@ import { getTutorSession, parseCookies, TUTOR_COOKIE } from '@/lib/auth'
 export async function GET(req: NextRequest) {
   try {
     const cookies = parseCookies(req.headers.get('cookie'))
-    const session = getTutorSession(cookies[TUTOR_COOKIE])
+    const session = await getTutorSession(cookies[TUTOR_COOKIE])
     if (!session) return NextResponse.json({ tutor: null })
     const tutor = await db.tutor.findUnique({ where: { id: session.tutorId } })
     if (!tutor || !tutor.active) return NextResponse.json({ tutor: null })

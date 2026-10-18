@@ -82,7 +82,7 @@ function recompute(events: IncomingEvent[]): {
 export async function POST(req: NextRequest) {
   try {
     const cookies = parseCookies(req.headers.get('cookie'))
-    const session = getSession(cookies[LEARNER_COOKIE])
+    const session = await getSession(cookies[LEARNER_COOKIE])
     if (!session) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
 
     const body = (await req.json().catch(() => null)) as { events?: IncomingEvent[] } | null

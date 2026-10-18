@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     }
 
     clearAttempts(`login:${learnerCode}`)
-    const token = startSession(learner.id)
+    const token = await startSession(learner.id)
 
     const res = NextResponse.json({
       learner: {

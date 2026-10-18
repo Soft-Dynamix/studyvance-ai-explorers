@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
   try {
     const cookies = parseCookies(req.headers.get('cookie'))
     const token = cookies[LEARNER_COOKIE]
-    endSession(token)
+    await endSession(token)
     const res = NextResponse.json({ ok: true })
     res.cookies.set(LEARNER_COOKIE, '', { path: '/', maxAge: 0 })
     return res

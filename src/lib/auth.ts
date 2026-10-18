@@ -29,42 +29,124 @@ export function verifyPin(pin: string, storedHash: string, salt: string): boolea
 export function createSessionToken(): string { return crypto.randomBytes(32).toString('hex'); }
 type Session = { learnerId: string; createdAt: number; expiresAt: number; };
 const SESSION_TTL_MS = 1000 * 60 * 60 * 4;
-const g1 = globalThis as unknown as { __sv_sessions?: Map<string, Session> };
-const sessions: Map<string, Session> = g1.__sv_sessions ?? new Map();
-if (process.env.NODE_ENV !== 'production') g1.__sv_sessions = sessions;
-export function startSession(learnerId: string): string {
+
+// In-memory cache (fast path) + database backup (survives server restarts)
+const sessionCache = new Map<string, Session>();
+
+export async function startSession(learnerId: string): Promise<string> {
   const token = createSessionToken();
   const now = Date.now();
-  sessions.set(token, { learnerId, createdAt: now, expiresAt: now + SESSION_TTL_MS });
+  const sessionData = { learnerId, createdAt: now, expiresAt: now + SESSION_TTL_MS };
+  sessionCache.set(token, sessionData);
+  // Also persist to database so it survives server restarts
+  try {
+    const { db } = await import('./db');
+    await db.session.upsert({
+      where: { token },
+      create: { token, learnerId, expiresAt: new Date(now + SESSION_TTL_MS) },
+      update: { learnerId, expiresAt: new Date(now + SESSION_TTL_MS) },
+    });
+  } catch {}
   return token;
 }
-export function getSession(token: string | undefined | null): Session | null {
+
+export async function getSession(token: string | undefined | null): Promise<Session | null> {
   if (!token) return null;
-  const s = sessions.get(token);
-  if (!s) return null;
-  if (Date.now() > s.expiresAt) { sessions.delete(token); return null; }
-  return s;
+  // Fast path: check in-memory cache
+  const cached = sessionCache.get(token);
+  if (cached) {
+    if (Date.now() > cached.expiresAt) { sessionCache.delete(token); return null; }
+    return cached;
+  }
+  // Slow path: check database (survives server restarts)
+  try {
+    const { db } = await import('./db');
+    const row = await db.session.findUnique({ where: { token } });
+    if (!row) return null;
+    if (Date.now() > row.expiresAt.getTime()) {
+      await db.session.delete({ where: { token } }).catch(() => {});
+      return null;
+    }
+    const sessionData = {
+      learnerId: row.learnerId!,
+      createdAt: row.createdAt.getTime(),
+      expiresAt: row.expiresAt.getTime(),
+    };
+    sessionCache.set(token, sessionData);
+    return sessionData;
+  } catch {
+    return null;
+  }
 }
-export function endSession(token: string | undefined | null): void { if (token) sessions.delete(token); }
+
+export async function endSession(token: string | undefined | null): Promise<void> {
+  if (!token) return;
+  sessionCache.delete(token);
+  try {
+    const { db } = await import('./db');
+    await db.session.delete({ where: { token } }).catch(() => {});
+  } catch {}
+}
+
 type TutorSession = { tutorId: string; username: string; role: 'tutor' | 'admin'; createdAt: number; expiresAt: number; };
 const TUTOR_SESSION_TTL_MS = 1000 * 60 * 60 * 8;
-const g2 = globalThis as unknown as { __sv_tutor_sessions?: Map<string, TutorSession> };
-const tutorSessions: Map<string, TutorSession> = g2.__sv_tutor_sessions ?? new Map();
-if (process.env.NODE_ENV !== 'production') g2.__sv_tutor_sessions = tutorSessions;
-export function startTutorSession(t: Omit<TutorSession, 'createdAt' | 'expiresAt'>): string {
+const tutorSessionCache = new Map<string, TutorSession>();
+
+export async function startTutorSession(t: Omit<TutorSession, 'createdAt' | 'expiresAt'>): Promise<string> {
   const token = createSessionToken();
   const now = Date.now();
-  tutorSessions.set(token, { ...t, createdAt: now, expiresAt: now + TUTOR_SESSION_TTL_MS });
+  tutorSessionCache.set(token, { ...t, createdAt: now, expiresAt: now + TUTOR_SESSION_TTL_MS });
+  try {
+    const { db } = await import('./db');
+    await db.session.upsert({
+      where: { token },
+      create: { token, tutorId: t.tutorId, expiresAt: new Date(now + TUTOR_SESSION_TTL_MS) },
+      update: { tutorId: t.tutorId, expiresAt: new Date(now + TUTOR_SESSION_TTL_MS) },
+    });
+  } catch {}
   return token;
 }
-export function getTutorSession(token: string | undefined | null): TutorSession | null {
+
+export async function getTutorSession(token: string | undefined | null): Promise<TutorSession | null> {
   if (!token) return null;
-  const s = tutorSessions.get(token);
-  if (!s) return null;
-  if (Date.now() > s.expiresAt) { tutorSessions.delete(token); return null; }
-  return s;
+  const cached = tutorSessionCache.get(token);
+  if (cached) {
+    if (Date.now() > cached.expiresAt) { tutorSessionCache.delete(token); return null; }
+    return cached;
+  }
+  try {
+    const { db } = await import('./db');
+    const row = await db.session.findUnique({ where: { token } });
+    if (!row || !row.tutorId) return null;
+    if (Date.now() > row.expiresAt.getTime()) {
+      await db.session.delete({ where: { token } }).catch(() => {});
+      return null;
+    }
+    // Need to fetch tutor details
+    const tutor = await db.tutor.findUnique({ where: { id: row.tutorId } });
+    if (!tutor) return null;
+    const sessionData: TutorSession = {
+      tutorId: tutor.id,
+      username: tutor.username,
+      role: tutor.role as 'tutor' | 'admin',
+      createdAt: row.createdAt.getTime(),
+      expiresAt: row.expiresAt.getTime(),
+    };
+    tutorSessionCache.set(token, sessionData);
+    return sessionData;
+  } catch {
+    return null;
+  }
 }
-export function endTutorSession(token: string | undefined | null): void { if (token) tutorSessions.delete(token); }
+
+export async function endTutorSession(token: string | undefined | null): Promise<void> {
+  if (!token) return;
+  tutorSessionCache.delete(token);
+  try {
+    const { db } = await import('./db');
+    await db.session.delete({ where: { token } }).catch(() => {});
+  } catch {}
+}
 type AttemptRecord = { fails: number; lockedUntil: number; };
 const MAX_ATTEMPTS = 5;
 const LOCK_MS = 1000 * 60 * 2;

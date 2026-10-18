@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
     clearAttempts(`tutor:${username}`)
-    const token = startTutorSession({
+    const token = await startTutorSession({
       tutorId: tutor.id,
       username: tutor.username,
       role: tutor.role as 'tutor' | 'admin',

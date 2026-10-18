@@ -5,7 +5,7 @@ import { getSession, parseCookies, LEARNER_COOKIE } from '@/lib/auth'
 export async function GET(req: NextRequest) {
   try {
     const cookies = parseCookies(req.headers.get('cookie'))
-    const session = getSession(cookies[LEARNER_COOKIE])
+    const session = await getSession(cookies[LEARNER_COOKIE])
     if (!session) return NextResponse.json({ learner: null })
 
     const learner = await db.learner.findUnique({

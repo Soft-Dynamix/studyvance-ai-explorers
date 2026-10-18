@@ -93,3 +93,11 @@ model Tutor {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 }
+
+model Session {
+  token     String   @id
+  learnerId String?
+  tutorId   String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
