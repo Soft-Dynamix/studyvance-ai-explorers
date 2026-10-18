@@ -11,7 +11,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useApp } from '@/lib/store'
 import { useProgressRecorder } from '@/hooks/use-progress-recorder'
 import { cn } from '@/lib/utils'
-import { getBestVoice, type VoiceProfile } from '@/lib/voice-config'
 import type { LessonScene, MissionId } from '@/lib/curriculum'
 
 type Props = {
@@ -29,146 +28,53 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
   const [playing, setPlaying] = React.useState(false)
   const [transcriptOpen, setTranscriptOpen] = React.useState(false)
   const [progress, setProgress] = React.useState(0)
-  const [voiceName, setVoiceName] = React.useState('')
-  const voiceProfileRef = React.useRef<VoiceProfile | null>(null)
+  const [audioError, setAudioError] = React.useState(false)
   const recordedRef = React.useRef(false)
   const videoRef = React.useRef<HTMLVideoElement | null>(null)
-  const utterRef = React.useRef<SpeechSynthesisUtterance | null>(null)
-  const progressTimerRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
-  const startTimeRef = React.useRef(0)
+  const audioRef = React.useRef<HTMLAudioElement | null>(null)
 
   const scene = scenes[idx]
   const total = scenes.length
 
-  // Get best child-friendly / robot-like English voice
-  const getVoice = React.useCallback(() => {
-    const profile = getBestVoice()
-    if (profile) {
-      voiceProfileRef.current = profile
-      setVoiceName(profile.name)
-      // Find the actual SpeechSynthesisVoice object
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        const voices = window.speechSynthesis.getVoices()
-        return voices.find(v => v.name === profile.name) || null
-      }
-    }
-    return null
-  }, [])
-
-  // Load voices on mount
-  React.useEffect(() => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return
-    getVoice()
-    window.speechSynthesis.onvoiceschanged = () => getVoice()
-    return () => {
-      if (window.speechSynthesis) window.speechSynthesis.cancel()
-    }
-  }, [getVoice])
-
-  // Speak using native browser voice (NO Chinese accent)
-  const speak = React.useCallback((text: string, onDone: () => void) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-      // Fallback: timer-based
-      const estMs = Math.max(15000, text.length * 55)
-      startTimeRef.current = Date.now()
-      progressTimerRef.current = setInterval(() => {
-        const elapsed = Date.now() - startTimeRef.current
-        setProgress(Math.min(95, (elapsed / estMs) * 100))
-        if (elapsed >= estMs) {
-          if (progressTimerRef.current) clearInterval(progressTimerRef.current)
-          setProgress(100)
-          onDone()
-        }
-      }, 200)
-      return
-    }
-
-    window.speechSynthesis.cancel()
-    const utter = new SpeechSynthesisUtterance(text)
-    const voice = getVoice()
-    const profile = voiceProfileRef.current
-    if (voice) {
-      utter.voice = voice
-      utter.lang = voice.lang
-    } else {
-      utter.lang = 'en-US'
-    }
-    // Use the voice profile's rate and pitch (higher pitch = more child-friendly)
-    utter.rate = profile?.rate ?? 0.9
-    utter.pitch = profile?.pitch ?? 1.3  // Higher pitch for a friendlier, younger sound
-    utter.volume = 1.0
-
-    // Estimate duration for progress bar
-    const estMs = Math.max(15000, text.length * 65)
-
-    utter.onstart = () => {
-      startTimeRef.current = Date.now()
-      progressTimerRef.current = setInterval(() => {
-        const elapsed = Date.now() - startTimeRef.current
-        setProgress(Math.min(95, (elapsed / estMs) * 100))
-      }, 200)
-    }
-
-    utter.onend = () => {
-      setProgress(100)
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current)
-      onDone()
-    }
-
-    utter.onerror = () => {
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current)
-      // Fallback: timer-based auto-advance
-      const estMs2 = Math.max(15000, text.length * 55)
-      startTimeRef.current = Date.now()
-      progressTimerRef.current = setInterval(() => {
-        const elapsed = Date.now() - startTimeRef.current
-        setProgress(Math.min(95, (elapsed / estMs2) * 100))
-        if (elapsed >= estMs2) {
-          if (progressTimerRef.current) clearInterval(progressTimerRef.current)
-          setProgress(100)
-          onDone()
-        }
-      }, 200)
-    }
-
-    utterRef.current = utter
-    window.speechSynthesis.speak(utter)
-  }, [getVoice])
-
-  // Play scene: start video (looping) + speak narration
+  // Play scene: start video (looping) + audio narration
   const playScene = React.useCallback((i: number) => {
     const sc = scenes[i]
     if (!sc) return
 
-    // Stop existing speech
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel()
+    // Stop existing audio
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
     }
-    if (progressTimerRef.current) {
-      clearInterval(progressTimerRef.current)
-      progressTimerRef.current = null
-    }
-    setProgress(0)
 
-    // Start video (loops continuously while narration plays)
+    setProgress(0)
+    setAudioError(false)
+
+    // Start video (loops while audio plays)
     const video = videoRef.current
     if (video) {
       video.currentTime = 0
-      video.muted = true  // Video is always muted — audio comes from speech synthesis
-      video.play().then(() => {
-        setPlaying(true)
-      }).catch(() => {
-        setPlaying(false)
-      })
+      video.muted = true  // Video is always muted — audio comes from WAV file
+      video.play().then(() => setPlaying(true)).catch(() => setPlaying(false))
     }
 
-    // Start narration (native English voice)
+    // Play audio narration from WAV file
     if (soundOn) {
-      speak(sc.transcript, () => {
-        // Narration ended — stop video + auto-advance
+      const audio = new Audio(sc.audio)
+      audioRef.current = audio
+
+      // Track progress
+      audio.addEventListener('timeupdate', () => {
+        if (audio.duration && isFinite(audio.duration)) {
+          setProgress((audio.currentTime / audio.duration) * 100)
+        }
+      })
+
+      // When audio ends → stop video + auto-advance
+      audio.addEventListener('ended', () => {
+        setProgress(100)
         if (videoRef.current) videoRef.current.pause()
         setPlaying(false)
-        setProgress(100)
         if (i < scenes.length - 1) {
           setTimeout(() => {
             setIdx(i + 1)
@@ -176,17 +82,61 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
           }, 500)
         }
       })
+
+      // Handle audio errors
+      audio.addEventListener('error', () => {
+        setAudioError(true)
+        // Fallback: timer-based auto-advance
+        const estMs = Math.max(15000, sc.transcript.length * 55)
+        const start = Date.now()
+        const timer = setInterval(() => {
+          const elapsed = Date.now() - start
+          setProgress(Math.min(95, (elapsed / estMs) * 100))
+          if (elapsed >= estMs) {
+            clearInterval(timer)
+            setProgress(100)
+            if (videoRef.current) videoRef.current.pause()
+            if (i < scenes.length - 1) {
+              setIdx(i + 1)
+            } else {
+              setPlaying(false)
+            }
+          }
+        }, 200)
+      })
+
+      // Try to play
+      audio.play().catch(() => {
+        setAudioError(true)
+        // Fallback: timer-based
+        const estMs = Math.max(15000, sc.transcript.length * 55)
+        const start = Date.now()
+        const timer = setInterval(() => {
+          const elapsed = Date.now() - start
+          setProgress(Math.min(95, (elapsed / estMs) * 100))
+          if (elapsed >= estMs) {
+            clearInterval(timer)
+            setProgress(100)
+            if (videoRef.current) videoRef.current.pause()
+            if (i < scenes.length - 1) {
+              setIdx(i + 1)
+            } else {
+              setPlaying(false)
+            }
+          }
+        }, 200)
+      })
     } else {
-      // No sound: use timer to auto-advance (video still plays)
+      // No sound: timer-based auto-advance (video still plays)
       const estMs = Math.max(15000, sc.transcript.length * 55)
-      startTimeRef.current = Date.now()
-      progressTimerRef.current = setInterval(() => {
-        const elapsed = Date.now() - startTimeRef.current
+      const start = Date.now()
+      const timer = setInterval(() => {
+        const elapsed = Date.now() - start
         setProgress(Math.min(95, (elapsed / estMs) * 100))
         if (elapsed >= estMs) {
-          if (progressTimerRef.current) clearInterval(progressTimerRef.current)
-          if (videoRef.current) videoRef.current.pause()
+          clearInterval(timer)
           setProgress(100)
+          if (videoRef.current) videoRef.current.pause()
           if (i < scenes.length - 1) {
             setIdx(i + 1)
           } else {
@@ -195,7 +145,7 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
         }
       }, 200)
     }
-  }, [scenes, soundOn, speak])
+  }, [scenes, soundOn])
 
   // When scene changes
   React.useEffect(() => {
@@ -205,42 +155,31 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
       playScene(idx)
     }
     return () => {
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel()
-      }
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current)
+      if (audioRef.current) audioRef.current.pause()
+      if (videoRef.current) videoRef.current.pause()
     }
   }, [idx, playing, playScene])
 
   // Cleanup on unmount
   React.useEffect(() => {
     return () => {
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel()
-      }
+      if (audioRef.current) audioRef.current.pause()
       if (videoRef.current) videoRef.current.pause()
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current)
     }
   }, [])
 
   const togglePlay = () => {
     if (playing) {
       setPlaying(false)
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel()
-      }
+      if (audioRef.current) audioRef.current.pause()
       if (videoRef.current) videoRef.current.pause()
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current)
     } else {
       playScene(idx)
     }
   }
 
   const replay = () => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-    }
-    if (progressTimerRef.current) clearInterval(progressTimerRef.current)
+    if (audioRef.current) audioRef.current.pause()
     if (videoRef.current) videoRef.current.pause()
     setIdx(0)
     setProgress(0)
@@ -250,10 +189,7 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
   }
 
   const goToScene = (i: number) => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-    }
-    if (progressTimerRef.current) clearInterval(progressTimerRef.current)
+    if (audioRef.current) audioRef.current.pause()
     if (videoRef.current) videoRef.current.pause()
     setPlaying(false)
     setIdx(i)
@@ -263,9 +199,7 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
   const toggleMute = () => {
     const next = !soundOn
     setSoundOn(next)
-    if (!next && typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-    }
+    if (audioRef.current) audioRef.current.muted = !next
   }
 
   const toggleFullscreen = () => {
@@ -279,11 +213,8 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
       recordedRef.current = true
       void record({ missionId, activityId: 'lesson', eventType: 'completed' })
     }
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-    }
+    if (audioRef.current) audioRef.current.pause()
     if (videoRef.current) videoRef.current.pause()
-    if (progressTimerRef.current) clearInterval(progressTimerRef.current)
     nextScreen()
   }
 
@@ -331,14 +262,6 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
               </div>
             )}
 
-            {/* Voice indicator */}
-            {voiceName && soundOn && (
-              <div className="absolute left-3 bottom-16 z-20 flex items-center gap-1 rounded-full bg-navy/70 px-2 py-0.5 backdrop-blur">
-                <Volume2 className="h-3 w-3 text-turquoise" />
-                <span className="text-[9px] font-medium text-cream/80 truncate max-w-[100px]">{voiceName}</span>
-              </div>
-            )}
-
             {/* Caption */}
             <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 to-transparent p-4 pt-12">
               <p className="text-center text-sm font-semibold text-white sm:text-base">
@@ -363,7 +286,7 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
             )}
           </div>
 
-          {/* Progress bar (synced to speech duration) */}
+          {/* Progress bar (synced to audio duration) */}
           <div className="w-full max-w-3xl">
             <div className="relative h-1.5 overflow-hidden rounded-full bg-cream/20">
               <motion.div
