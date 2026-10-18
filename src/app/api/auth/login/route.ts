@@ -77,8 +77,10 @@ export async function POST(req: NextRequest) {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 4,
+      maxAge: 60 * 60 * 24 * 7, // 7 days
     })
+    // Clear old cookie name if it exists
+    res.cookies.set('sv_learner_session', '', { maxAge: 0, path: '/' })
     return res
   } catch (e) {
     console.error('[login] error', e)

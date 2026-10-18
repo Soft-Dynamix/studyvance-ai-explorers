@@ -33,17 +33,24 @@ export function PortfolioScreen() {
       const storyText = MISSION1_PORTFOLIO_PROMPTS.map(
         (p) => `${p.label} ${values[p.id]?.trim()}`
       ).join('\n')
-      await api('/api/portfolio', {
-        method: 'POST',
-        json: { missionId: 'm1', storyText, assistanceNote: 'own_first_draft' },
-      })
+      // Try to save to server, but don't block on it
+      try {
+        await api('/api/portfolio', {
+          method: 'POST',
+          json: { missionId: 'm1', storyText, assistanceNote: 'own_first_draft' },
+        })
+        toast.success('Portfolio saved!')
+      } catch {
+        // Server save failed (maybe session expired) — continue anyway
+        toast.success('Portfolio saved locally!')
+      }
+      // Record progress (saved locally + queued for sync)
       await record({
         missionId: 'm1',
         activityId: 'portfolio',
         eventType: 'completed',
         payload: { values },
       })
-      toast.success('Portfolio saved!')
       setScreen(nextScreenFor('m1', 'm1-portfolio'))
     } catch (e: any) {
       toast.error(e?.message ?? 'Could not save portfolio')
