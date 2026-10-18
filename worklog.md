@@ -141,3 +141,59 @@ $ eslint .
 3. Sign in as a learner using the code + PIN returned in step 2.
 4. Pick an avatar → enter Mission 1 → lesson → sort → privacy → quiz → portfolio → reward.
 5. Sign out, then go to Tutor / Admin → sign in with the tutor PIN → see the learner, badges, help flags.
+
+---
+
+## 2026-10-18 — Gamify all 7 mission game screens (task: sv-gamify-7)
+
+### What was rebuilt
+Replaced all 7 StudyVance game screens with playful, animated, kid-friendly versions. **All curriculum data was preserved verbatim** — no question, claim, fact, prompt, or answer was changed. Each game now records the same `activityId` it always did, so progress tracking and tutor reports are unaffected.
+
+| File | Mission | What it became |
+| --- | --- | --- |
+| `src/components/screens/mission1/SortGameScreen.tsx` | m1 · sort | Drag-and-drop sorting game. Cards fall from the top with stagger, drag into turquoise AI bin or navy Ordinary bin. Correct drop → celebration particle burst + "Correct!" toast + green check. Wrong drop → card shakes red and snaps back. Stars (1–3) based on first-try accuracy. Progress bar, reset button, tap-to-reveal the "why". |
+| `src/components/screens/mission1/PrivacyGameScreen.tsx` | m1 · privacy | "Spot the danger" chat-bubble UI. Items bounce in one-by-one; personal info has a pulsing red glow. Tapping personal → big red ✗ stamp + "Safe!" toast. Tapping safe → card shakes + "This one is safe to keep!" Danger meter fills 0→100% as items are found; at 100% the safe version appears with sparkle burst. |
+| `src/components/screens/mission2/PromptBuilderGame.tsx` | m2 · game | Puzzle-piece assembly. Each TASK / DETAILS / FORMAT category slides in from alternating sides with its own brand color. Picked option flies up into a "building blocks" prompt builder area. "Check my prompt" button pulses when all 3 are selected. On best prompt → confetti + 3 stars. Then reply comparison as two flip cards (Reply A / Reply B) — tap to flip and reveal. |
+| `src/components/screens/mission3/ClaimCheckGame.tsx` | m3 · game | Detective board. Moon facts pinned as sticky yellow notes (slight rotation, drop shadow). Claims arrive one at a time as "case files". Three big verdict buttons: Supported (green), Contradicted (red), Not Enough Info (yellow). Correct → "DETECTIVE APPROVED" stamp + auto-advance after 1.7s. Wrong → card shakes + highlights the relevant Fact sticky. "Case X of 5" stepper + solved dots. Magnifying-glass 🔍 cursor that follows the pointer. Final case-closed card with stars + recap. |
+| `src/components/screens/mission4/StoryEditorGame.tsx` | m4 · game | 3-step story workshop with a "Step X of 3" pill indicator. **Plan**: four flip blocks (Character 🐰 / Setting 🏠 / Problem ❗ / Solution 💡); tap to flip open and write. **Review**: practice draft on a "scroll" background; 3 problem snippets pulse red, tap to fix → "FIXED" stamp + green check. **Write**: storybook textarea + sentence counter "6/8 sentences" that turns turquoise when in range; 10 emoji stickers tap-to-insert; existing drawing canvas kept; truthful assistance note kept. |
+| `src/components/screens/mission5/HintGame.tsx` | m5 · game | Choice-adventure in 4 stages. **Doors**: two big doors 💡 vs 🚪. **Blackboard**: wrong math problem on a chalkboard; tap "Check" → board splits to show `3×7=21` (red ✗) vs `3×8=24` (turquoise ✓). **Try it yourself**: input + giant pulsing checkmark button; correct → fireworks burst. **Treasure hunt**: passage on a scroll; questions appear as treasure chests 🪙; correct answer opens chest → 💎 + sparkle. Stage progress dots at the top. |
+| `src/components/screens/mission6/SkillsCheckGame.tsx` | m6 · game | Game-show quiz. Each question on a colorful card with a visual timer ring (no pressure). Four answer cards (A/B/C/D). Correct → card flips to turquoise with a "CORRECT!" stamp. Wrong → flips to red with shake; correct answer highlighted in turquoise. "🔥 N in a row!" streak badge that pulses on each increment. After all 5: results screen with stars (3 if 5/5, 2 if 4/5, 1 otherwise) + best-streak display + rubric self-check with 3-button segmented sliders (0 / 1 / 2) for each of the 5 rubric items. |
+
+### Engineering notes
+
+- **All `'use client'`** and use framer-motion's `motion` + `AnimatePresence` for every animation (fall-in, slide-in, flip, shake, confetti, stamp, sparkle burst, fireworks).
+- **`useRef` guards** for "record once" semantics in every screen (`recordedRef`) — never `useState`, to avoid React 19 strict-mode double-invocations duplicating events.
+- **Drag-and-drop (m1)**: implemented with `motion.div` `drag` + `dragSnapToOrigin` + `dragElastic`; on `onDragEnd` we use `info.point` (viewport coords) to hit-test every `[data-bucket]` element via `getBoundingClientRect()`. A `pointermove` listener live-highlights the bucket the pointer is hovering over. This works on touch and mouse — no extra library needed.
+- **First-try accuracy** (m1) tracked with a `wrongCardIds: Set<string>` so a card that was tried wrong once and then placed correctly doesn't count as a first-try. Stars: 3 if no mistakes, 2 if ≤1 mistake, else 1.
+- **Streak counter** (m6) uses `streak`/`maxStreak` state; on wrong answer, streak resets to 0. The "🔥 N in a row!" badge re-mounts with `key={streak}` so the spring-scale-in animation fires on every increment.
+- **Rubric sliders** (m6): the existing `src/components/ui/slider.tsx` was a stub that imports `@radix-ui/react-slider` (not installed in this sandbox), which caused an immediate server-compile 500. Replaced with a 3-button segmented control (0 / 1 / 2) built from `motion.button` — actually better UX for Grade 4–6 learners than a tiny slider thumb. Each button is color-coded (0 = muted, 1 = sunshine, 2 = turquoise + ✓).
+- **Drawing canvas** (m4): kept the existing `<canvas>` + pointer-event drawing logic intact; only added a `useState`-driven sentence counter that parses `.!?` followed by whitespace, plus an emoji-sticker row that appends the picked emoji to the story textarea.
+- **Treasure hunt** (m5): each question starts as 🪙; on a correct answer we swap to 💎 and reveal the explanation with a sparkle icon. Wrong answers keep the chest closed so the learner can try again — only correct answers count toward the "0/4 treasures found" progress.
+- **StudyVance brand palette** enforced everywhere: `bg-cream` background, `bg-adventure-grid` texture, `bg-navy` / `bg-turquoise` / `bg-sunshine` accents, `text-navy` / `text-turquoise` / `text-sunshine` text colors, `bg-sunshine/15` / `bg-turquoise/10` for soft fills. No indigo or blue introduced.
+
+### Lint status
+
+```text
+$ bun run lint
+$ eslint .
+
+examples/websocket/frontend.tsx            — 1 warning  (pre-existing)
+src/components/screens/mission-shared/LessonPlayer.tsx — 2 warnings (pre-existing)
+src/hooks/use-toast.ts                     — 1 warning  (pre-existing)
+
+✖ 4 problems (0 errors, 4 warnings)
+```
+
+**0 errors.** All 4 remaining warnings live in files I did not touch. `tsc --noEmit` is also clean for every file under `src/components/screens/mission*/`.
+
+### Dev server
+
+The Next.js dev server (PID 1086, `next-server v16.4.1`) was already running on port 3000 before this task and stayed running. `curl http://localhost:3000/` returns **HTTP 200** with no compile errors. The only fix needed mid-build was the `Slider` import substitution described above — once removed, all routes compile cleanly via Turbopack HMR.
+
+### How to verify end-to-end
+
+1. Sign in as a learner (use the setup-created code + PIN).
+2. From the mission map, open Mission 1 → drag the 4 cards into the AI / Ordinary bins; expect confetti, particles, and a 1–3 star rating at the end.
+3. Continue to the Privacy game → tap the 5 red-pulsing personal items; watch the Danger Meter climb to 100% and the safe-version sparkle appear.
+4. Repeat for Missions 2–6 (game show step on m6 includes the streak counter and the 5-item rubric at the end).
+5. Each completion writes a `completed` event to `/api/progress` with the correct `missionId` + `activityId` (same as before), so tutor dashboards and mission-map resumability continue to work unchanged.
