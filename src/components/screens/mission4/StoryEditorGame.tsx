@@ -300,15 +300,21 @@ export function StoryEditorGame() {
     }
     setSaving(true)
     try {
-      await api('/api/portfolio', {
-        method: 'POST',
-        json: {
-          missionId: 'm4',
-          storyText: story.trim(),
-          drawingData,
-          assistanceNote: assistance,
-        },
-      })
+      // Try to save to server, but don't block on it
+      try {
+        await api('/api/portfolio', {
+          method: 'POST',
+          json: {
+            missionId: 'm4',
+            storyText: story.trim(),
+            drawingData,
+            assistanceNote: assistance,
+          },
+        })
+        toast.success('Storybook saved! 📖')
+      } catch {
+        toast.success('Storybook saved locally! 📖')
+      }
       if (!recordedRef.current) {
         recordedRef.current = true
         await record({
@@ -318,7 +324,6 @@ export function StoryEditorGame() {
           payload: { plan, fixedIssues: Array.from(fixedIssues), assistance, sentenceCount },
         })
       }
-      toast.success('Storybook saved! 📖')
       setScreen(nextScreenFor('m4', 'game'))
     } catch (e: any) {
       toast.error(e?.message ?? 'Could not save story')

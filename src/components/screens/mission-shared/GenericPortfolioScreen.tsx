@@ -45,17 +45,22 @@ export function GenericPortfolioScreen() {
     setSaving(true)
     try {
       const storyText = prompts.map((p) => `${p.label}\n${values[p.id]?.trim()}`).join('\n\n')
-      await api('/api/portfolio', {
-        method: 'POST',
-        json: { missionId, storyText, assistanceNote: 'own_first_draft' },
-      })
+      // Try to save to server, but don't block on it
+      try {
+        await api('/api/portfolio', {
+          method: 'POST',
+          json: { missionId, storyText, assistanceNote: 'own_first_draft' },
+        })
+        toast.success('Portfolio saved!')
+      } catch {
+        toast.success('Portfolio saved locally!')
+      }
       await record({
         missionId,
         activityId: 'portfolio',
         eventType: 'completed',
         payload: { values },
       })
-      toast.success('Portfolio saved!')
       setScreen(nextScreenFor(missionId, 'portfolio'))
     } catch (e: any) {
       toast.error(e?.message ?? 'Could not save portfolio')
