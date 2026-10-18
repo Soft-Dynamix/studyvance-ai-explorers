@@ -11,6 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useApp } from '@/lib/store'
 import { useProgressRecorder } from '@/hooks/use-progress-recorder'
 import { cn } from '@/lib/utils'
+import { getBestVoice, type VoiceProfile } from '@/lib/voice-config'
 import type { LessonScene, MissionId } from '@/lib/curriculum'
 
 type Props = {
@@ -29,6 +30,7 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
   const [transcriptOpen, setTranscriptOpen] = React.useState(false)
   const [progress, setProgress] = React.useState(0)
   const [voiceName, setVoiceName] = React.useState('')
+  const voiceProfileRef = React.useRef<VoiceProfile | null>(null)
   const recordedRef = React.useRef(false)
   const videoRef = React.useRef<HTMLVideoElement | null>(null)
   const utterRef = React.useRef<SpeechSynthesisUtterance | null>(null)
@@ -38,21 +40,18 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
   const scene = scenes[idx]
   const total = scenes.length
 
-  // Get best native English voice
+  // Get best child-friendly / robot-like English voice
   const getVoice = React.useCallback(() => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return null
-    const voices = window.speechSynthesis.getVoices()
-    const preferred = [
-      'Google US English', 'Google UK English Male', 'Google UK English Female',
-      'Microsoft Jenny', 'Microsoft Guy', 'Microsoft Aria', 'Microsoft Davis',
-      'Samantha', 'Daniel', 'Karen', 'Moira', 'Tessa',
-    ]
-    for (const name of preferred) {
-      const v = voices.find(v => v.name === name)
-      if (v) { setVoiceName(v.name); return v }
+    const profile = getBestVoice()
+    if (profile) {
+      voiceProfileRef.current = profile
+      setVoiceName(profile.name)
+      // Find the actual SpeechSynthesisVoice object
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        const voices = window.speechSynthesis.getVoices()
+        return voices.find(v => v.name === profile.name) || null
+      }
     }
-    const enVoice = voices.find(v => v.lang.startsWith('en'))
-    if (enVoice) { setVoiceName(enVoice.name); return enVoice }
     return null
   }, [])
 
@@ -87,14 +86,16 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
     window.speechSynthesis.cancel()
     const utter = new SpeechSynthesisUtterance(text)
     const voice = getVoice()
+    const profile = voiceProfileRef.current
     if (voice) {
       utter.voice = voice
       utter.lang = voice.lang
     } else {
       utter.lang = 'en-US'
     }
-    utter.rate = 0.85
-    utter.pitch = 1.0
+    // Use the voice profile's rate and pitch (higher pitch = more child-friendly)
+    utter.rate = profile?.rate ?? 0.9
+    utter.pitch = profile?.pitch ?? 1.3  // Higher pitch for a friendlier, younger sound
     utter.volume = 1.0
 
     // Estimate duration for progress bar
