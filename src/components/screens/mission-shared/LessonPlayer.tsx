@@ -1,11 +1,10 @@
 'use client'
 
 import * as React from 'react'
-import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Play, Pause, RotateCcw, Volume2, VolumeX,
-  ChevronDown, ChevronUp, ArrowRight,
+  ChevronDown, ChevronUp, ArrowRight, Maximize2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -20,163 +19,6 @@ type Props = {
   nextScreen: () => void
 }
 
-// ─── Visual cues: what appears on screen at each point in the narration ───
-// Each cue has a delay (when it appears) and visual content
-type VisualCue = {
-  delay: number  // seconds after narration starts
-  type: 'text' | 'emoji' | 'diagram' | 'highlight' | 'checklist'
-  content: string
-  subContent?: string
-  emoji?: string
-}
-
-// Define visual cues for each scene — these match what the narrator says
-const SCENE_CUES: Record<string, VisualCue[]> = {
-  // Mission 1, Scene 1 — "Can a computer learn to recognise a cat?"
-  'scene-1': [
-    { delay: 0, type: 'emoji', content: 'Can a computer learn to recognise a cat?', emoji: '🤔', delay2: 0 },
-    { delay: 3, type: 'emoji', content: 'How do YOU know it is a cat?', emoji: '🐱' },
-    { delay: 6, type: 'text', content: 'Pointy ears', subContent: 'whiskers', emoji: '👂' },
-    { delay: 9, type: 'text', content: 'Whiskers', subContent: 'long and thin', emoji: '〰️' },
-    { delay: 12, type: 'text', content: 'Small nose', subContent: 'pink and soft', emoji: '👃' },
-    { delay: 16, type: 'diagram', content: 'Show computer 1000s of cat photos', subContent: 'Label each one: "This is a cat"', emoji: '📸' },
-    { delay: 22, type: 'highlight', content: 'Computer notices PATTERNS', subContent: 'ears + whiskers + nose = cat', emoji: '🧠' },
-    { delay: 28, type: 'diagram', content: 'Show a NEW photo', subContent: 'Computer guesses: "I think this is a cat!"', emoji: '✅' },
-    { delay: 34, type: 'text', content: 'Not magic!', subContent: 'It learned from examples we gave it', emoji: '✨' },
-  ],
-  // Mission 1, Scene 2 — AI vs ordinary programs
-  'scene-2': [
-    { delay: 0, type: 'text', content: 'Ordinary Programs', subContent: 'Follow fixed steps', emoji: '⚙️' },
-    { delay: 4, type: 'emoji', content: 'Calculator: 1+1 = 2', emoji: '🧮' },
-    { delay: 8, type: 'emoji', content: 'Kitchen Timer: count down', emoji: '⏰' },
-    { delay: 12, type: 'text', content: 'Always the same', subContent: 'Never learns anything new', emoji: '🔁' },
-    { delay: 16, type: 'highlight', content: 'AI is DIFFERENT', subContent: 'It LEARNS from examples', emoji: '🧠' },
-    { delay: 22, type: 'diagram', content: 'Train on animal photos', subContent: 'Guesses: "This is a cat"', emoji: '🐱' },
-    { delay: 28, type: 'diagram', content: 'Reads many stories', subContent: 'Writes a new story', emoji: '📖' },
-    { delay: 34, type: 'checklist', content: 'Did it learn from examples?', subContent: 'Or just follow fixed steps?', emoji: '❓' },
-  ],
-  // Mission 1, Scene 3 — Privacy rule
-  'scene-3': [
-    { delay: 0, type: 'highlight', content: 'AI can make MISTAKES', subContent: 'A confident answer is NOT proof', emoji: '⚠️' },
-    { delay: 5, type: 'checklist', content: 'Never share your:', emoji: '🔒' },
-    { delay: 8, type: 'emoji', content: 'Real full name', emoji: '👤' },
-    { delay: 11, type: 'emoji', content: 'Home address', emoji: '🏠' },
-    { delay: 14, type: 'emoji', content: 'Phone number', emoji: '📱' },
-    { delay: 17, type: 'emoji', content: 'Password', emoji: '🔑' },
-    { delay: 20, type: 'emoji', content: "Other child's photo", emoji: '📷' },
-    { delay: 24, type: 'highlight', content: 'Use MADE-UP names', subContent: 'Like Pip the robot rabbit', emoji: '🐰' },
-    { delay: 30, type: 'checklist', content: 'Be kind. Be safe. Be truthful.', emoji: '✅' },
-  ],
-}
-
-// Get cues for a scene (fallback: show caption as text)
-function getSceneCues(sceneId: string, caption: string): VisualCue[] {
-  if (SCENE_CUES[sceneId]) return SCENE_CUES[sceneId]
-  // Fallback: just show the caption as a single text cue
-  return [{ delay: 0, type: 'text', content: caption, emoji: '💡' }]
-}
-
-// ─── Visual cue renderer ───
-function CueCard({ cue, active }: { cue: VisualCue; active: boolean }) {
-  if (!active) return null
-
-  const baseClass = 'rounded-2xl backdrop-blur-md shadow-2xl ring-1 '
-
-  if (cue.type === 'emoji') {
-    return (
-      <motion.div
-        initial={{ scale: 0, rotate: -10 }}
-        animate={{ scale: 1, rotate: 0 }}
-        exit={{ scale: 0, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-        className={cn(baseClass, 'bg-navy/85 p-6 text-center ring-turquoise/40')}
-      >
-        <div className="text-5xl mb-2">{cue.emoji}</div>
-        <div className="text-lg font-bold text-cream">{cue.content}</div>
-      </motion.div>
-    )
-  }
-
-  if (cue.type === 'text') {
-    return (
-      <motion.div
-        initial={{ x: 50, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: -50, opacity: 0 }}
-        transition={{ duration: 0.3 }}
-        className={cn(baseClass, 'bg-turquoise/90 p-5 ring-turquoise/50')}
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">{cue.emoji}</span>
-          <div>
-            <div className="text-xl font-bold text-navy">{cue.content}</div>
-            {cue.subContent && <div className="text-sm text-navy/80">{cue.subContent}</div>}
-          </div>
-        </div>
-      </motion.div>
-    )
-  }
-
-  if (cue.type === 'highlight') {
-    return (
-      <motion.div
-        initial={{ scale: 0.5, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.5, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 150 }}
-        className={cn(baseClass, 'bg-sunshine p-6 ring-sunshine/50')}
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-4xl">{cue.emoji}</span>
-          <div>
-            <div className="text-xl font-extrabold text-navy">{cue.content}</div>
-            {cue.subContent && <div className="text-sm text-navy/70">{cue.subContent}</div>}
-          </div>
-        </div>
-      </motion.div>
-    )
-  }
-
-  if (cue.type === 'diagram') {
-    return (
-      <motion.div
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: -30, opacity: 0 }}
-        transition={{ duration: 0.4 }}
-        className={cn(baseClass, 'bg-navy/90 p-5 ring-turquoise/40')}
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">{cue.emoji}</span>
-          <div>
-            <div className="text-base font-bold text-turquoise">{cue.content}</div>
-            {cue.subContent && <div className="text-sm text-cream/80">{cue.subContent}</div>}
-          </div>
-        </div>
-      </motion.div>
-    )
-  }
-
-  if (cue.type === 'checklist') {
-    return (
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.8, opacity: 0 }}
-        className={cn(baseClass, 'bg-navy/85 p-5 ring-sunshine/40')}
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">{cue.emoji}</span>
-          <div className="text-base font-bold text-sunshine">{cue.content}</div>
-        </div>
-      </motion.div>
-    )
-  }
-
-  return null
-}
-
-// ─── Main Lesson Player ───
 export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
   const soundOn = useApp((s) => s.soundOn)
   const setSoundOn = useApp((s) => s.setSoundOn)
@@ -186,166 +28,145 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
   const [playing, setPlaying] = React.useState(false)
   const [transcriptOpen, setTranscriptOpen] = React.useState(false)
   const [progress, setProgress] = React.useState(0)
-  const [elapsed, setElapsed] = React.useState(0) // seconds
   const recordedRef = React.useRef(false)
-  const utterRef = React.useRef<SpeechSynthesisUtterance | null>(null)
-  const timerRef = React.useRef<ReturnType<typeof setInterval> | null>(null)
-  const startTimeRef = React.useRef<number>(0)
+  const videoRef = React.useRef<HTMLVideoElement | null>(null)
+  const audioRef = React.useRef<HTMLAudioElement | null>(null)
 
   const scene = scenes[idx]
   const total = scenes.length
-  const cues = getSceneCues(scene.id, scene.caption)
 
-  // Get best English voice from browser
-  const getVoice = React.useCallback(() => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return null
-    const voices = window.speechSynthesis.getVoices()
-    const preferred = [
-      'Google US English', 'Google UK English Male', 'Google UK English Female',
-      'Microsoft Jenny', 'Microsoft Guy', 'Microsoft Aria', 'Microsoft Davis',
-      'Samantha', 'Daniel', 'Karen', 'Moira', 'Tessa',
-    ]
-    for (const name of preferred) {
-      const v = voices.find(v => v.name === name)
-      if (v) return v
-    }
-    return voices.find(v => v.lang.startsWith('en')) || null
-  }, [])
-
-  // Load voices
-  React.useEffect(() => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return
-    const load = () => {
-      const v = window.speechSynthesis.getVoices()
-      if (v.length > 0) return
-    }
-    load()
-    window.speechSynthesis.onvoiceschanged = load
-    return () => { if (window.speechSynthesis) window.speechSynthesis.cancel() }
-  }, [])
-
-  // Start narration for a scene
+  // Play the video + audio for a scene
   const playScene = React.useCallback((i: number) => {
     const sc = scenes[i]
     if (!sc) return
 
-    // Stop existing
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel()
+    const video = videoRef.current
+    const audio = audioRef.current
+
+    // Reset video
+    if (video) {
+      video.currentTime = 0
+      video.muted = !soundOn
     }
-    if (timerRef.current) clearInterval(timerRef.current)
 
-    setProgress(0)
-    setElapsed(0)
-    startTimeRef.current = Date.now()
-
-    // Start elapsed timer for visual cues
-    timerRef.current = setInterval(() => {
-      const elapsed = (Date.now() - startTimeRef.current) / 1000
-      setElapsed(elapsed)
-      // Estimate progress (assume ~15 chars per second)
-      const estDuration = Math.max(10, sc.transcript.length / 15)
-      setProgress(Math.min(95, (elapsed / estDuration) * 100))
-    }, 200)
-
-    if (soundOn) {
-      // Use browser SpeechSynthesis
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        const utter = new SpeechSynthesisUtterance(sc.transcript)
-        const voice = getVoice()
-        if (voice) {
-          utter.voice = voice
-          utter.lang = voice.lang
-        } else {
-          utter.lang = 'en-US'
-        }
-        utter.rate = 0.85
-        utter.pitch = 1.0
-
-        utter.onend = () => {
-          setProgress(100)
-          if (timerRef.current) clearInterval(timerRef.current)
-          // Auto-advance
-          if (i < scenes.length - 1) {
-            setTimeout(() => setIdx(i + 1), 500)
-          } else {
-            setPlaying(false)
-          }
-        }
-
-        utter.onerror = () => {
-          if (timerRef.current) clearInterval(timerRef.current)
-          // Fallback: auto-advance after estimated time
-          const estMs = Math.max(10000, sc.transcript.length * 55)
-          setTimeout(() => {
-            if (i < scenes.length - 1) setIdx(i + 1)
-            else setPlaying(false)
-          }, estMs)
-        }
-
-        utterRef.current = utter
-        window.speechSynthesis.speak(utter)
-      }
-    } else {
-      // No sound: auto-advance after estimated time
-      const estMs = Math.max(10000, sc.transcript.length * 55)
-      setTimeout(() => {
-        if (timerRef.current) clearInterval(timerRef.current)
-        setProgress(100)
-        if (i < scenes.length - 1) setIdx(i + 1)
-        else setPlaying(false)
-      }, estMs)
+    // Reset audio
+    if (audio) {
+      audio.currentTime = 0
+      audio.muted = !soundOn
     }
-  }, [scenes, soundOn, getVoice])
 
-  // When scene changes and playing, start narration
+    // Play video (loops while audio plays)
+    if (video) {
+      video.play().then(() => {
+        setPlaying(true)
+      }).catch(() => {
+        setPlaying(false)
+      })
+    }
+
+    // Play audio (the actual narration)
+    if (audio && soundOn) {
+      audio.play().then(() => {
+        setPlaying(true)
+      }).catch(() => {
+        // Audio failed — video still plays
+      })
+    }
+  }, [scenes, soundOn])
+
+  // When scene changes
   React.useEffect(() => {
+    const video = videoRef.current
+    const audio = audioRef.current
+    if (video) video.load()
+    if (audio) audio.load()
     if (playing) {
       playScene(idx)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx])
+
+  // Cleanup
+  React.useEffect(() => {
     return () => {
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel()
-      }
-      if (timerRef.current) clearInterval(timerRef.current)
+      if (videoRef.current) videoRef.current.pause()
+      if (audioRef.current) audioRef.current.pause()
     }
-  }, [idx, playing, playScene])
+  }, [])
 
   const togglePlay = () => {
+    const video = videoRef.current
+    const audio = audioRef.current
     if (playing) {
+      video?.pause()
+      audio?.pause()
       setPlaying(false)
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel()
-      }
-      if (timerRef.current) clearInterval(timerRef.current)
     } else {
-      setPlaying(true)
       playScene(idx)
     }
   }
 
   const replay = () => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-    }
-    if (timerRef.current) clearInterval(timerRef.current)
+    const video = videoRef.current
+    const audio = audioRef.current
+    if (video) video.currentTime = 0
+    if (audio) audio.currentTime = 0
     setIdx(0)
     setProgress(0)
-    setElapsed(0)
     setPlaying(true)
     recordedRef.current = false
     playScene(0)
   }
 
   const goToScene = (i: number) => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-    }
-    if (timerRef.current) clearInterval(timerRef.current)
+    const video = videoRef.current
+    const audio = audioRef.current
+    video?.pause()
+    audio?.pause()
+    setPlaying(false)
     setIdx(i)
     setProgress(0)
-    setElapsed(0)
-    setPlaying(false)
+  }
+
+  // Audio time update → progress + auto-advance
+  const handleTimeUpdate = () => {
+    const audio = audioRef.current
+    if (!audio || !audio.duration) return
+    setProgress((audio.currentTime / audio.duration) * 100)
+  }
+
+  // When audio ends → next scene
+  const handleAudioEnded = () => {
+    setProgress(100)
+    const video = videoRef.current
+    if (video) video.pause()
+    if (idx < total - 1) {
+      setTimeout(() => setIdx(idx + 1), 500)
+    } else {
+      setPlaying(false)
+    }
+  }
+
+  // When video ends → loop it (while audio plays)
+  const handleVideoEnded = () => {
+    const video = videoRef.current
+    if (video && playing) {
+      video.currentTime = 0
+      video.play().catch(() => {})
+    }
+  }
+
+  const toggleMute = () => {
+    const next = !soundOn
+    setSoundOn(next)
+    if (videoRef.current) videoRef.current.muted = !next
+    if (audioRef.current) audioRef.current.muted = !next
+  }
+
+  const toggleFullscreen = () => {
+    const video = videoRef.current
+    if (!video) return
+    if (video.requestFullscreen) video.requestFullscreen()
   }
 
   const next = () => {
@@ -353,78 +174,61 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
       recordedRef.current = true
       void record({ missionId, activityId: 'lesson', eventType: 'completed' })
     }
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-    }
-    if (timerRef.current) clearInterval(timerRef.current)
+    if (videoRef.current) videoRef.current.pause()
+    if (audioRef.current) audioRef.current.pause()
     nextScreen()
   }
 
-  // Determine which cues are active based on elapsed time
-  const activeCues = cues.filter(cue => elapsed >= cue.delay)
-  const currentCue = activeCues[activeCues.length - 1] // most recent cue
+  // Use animated video if available, otherwise fall back to static image video
+  const videoSrc = scene.video || scene.illustration
+  const hasAnimatedVideo = scene.video && scene.video.includes('-anim')
 
   return (
     <div className="relative flex min-h-screen flex-col bg-navy text-cream">
       {/* Video stage */}
       <div className="relative flex-1 overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-stars opacity-30" aria-hidden />
+        <div className="relative z-10 mx-auto flex h-full max-w-5xl flex-col items-center justify-center gap-4 px-4 py-6">
+          {/* Real video player */}
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-turquoise/30">
+            <video
+              ref={videoRef}
+              className="aspect-video w-full object-contain"
+              onEnded={handleVideoEnded}
+              onPlay={() => setPlaying(true)}
+              onPause={() => setPlaying(false)}
+              playsInline
+              loop={!hasAnimatedVideo}  // Loop static videos, but not animated ones
+              muted
+              autoPlay={false}
+              preload="auto"
+            >
+              <source src={videoSrc} type="video/mp4" />
+            </video>
 
-        <div className="relative z-10 mx-auto flex h-full max-w-5xl flex-col items-center justify-center px-4 py-6">
-          {/* Animated educational scene */}
-          <div className="relative aspect-video w-full max-w-3xl overflow-hidden rounded-2xl bg-gradient-to-br from-navy-soft to-navy shadow-2xl ring-1 ring-turquoise/30">
-
-            {/* Background illustration (faded) */}
-            <div className="absolute inset-0 opacity-30">
-              <Image
-                src={scene.illustration}
-                alt={scene.title}
-                fill
-                priority
-                className="object-cover"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
-              />
-            </div>
+            {/* Hidden audio element for narration */}
+            <audio
+              ref={audioRef}
+              src={scene.audio}
+              onTimeUpdate={handleTimeUpdate}
+              onEnded={handleAudioEnded}
+              preload="auto"
+              hidden
+            />
 
             {/* Scene badge */}
-            <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full bg-turquoise px-4 py-1.5 shadow-lg">
-              <span className="text-xs font-bold uppercase tracking-wider text-navy">
-                Scene {idx + 1} / {total}
-              </span>
+            <div className="absolute left-3 top-3 z-20 rounded-full bg-turquoise/90 px-3 py-1 text-xs font-bold uppercase tracking-wider text-navy backdrop-blur">
+              Scene {idx + 1} / {total}
             </div>
 
             {/* Scene title */}
-            <div className="absolute right-4 top-4 z-20 rounded-lg bg-navy/80 px-4 py-2 backdrop-blur ring-1 ring-turquoise/30">
+            <div className="absolute right-3 top-3 z-20 rounded-lg bg-navy/80 px-3 py-1.5 backdrop-blur">
               <span className="text-sm font-bold text-sunshine">{scene.title}</span>
-            </div>
-
-            {/* Visual cues — the animated educational content that shows what's spoken */}
-            <div className="absolute inset-0 flex items-center justify-center p-8">
-              <AnimatePresence mode="popLayout">
-                {currentCue && (
-                  <CueCard key={`${scene.id}-${currentCue.delay}`} cue={currentCue} active={true} />
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Previous cues (smaller, fading at edges) */}
-            <div className="absolute left-4 bottom-20 z-10 flex flex-col gap-1">
-              {activeCues.slice(-3, -1).map((cue, i) => (
-                <motion.div
-                  key={`prev-${cue.delay}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 0.3 - i * 0.1 }}
-                  className="flex items-center gap-1.5 text-xs text-cream"
-                >
-                  <span>{cue.emoji}</span>
-                  <span className="truncate max-w-[120px]">{cue.content}</span>
-                </motion.div>
-              ))}
             </div>
 
             {/* Playing indicator */}
             {playing && (
-              <div className="absolute right-4 bottom-20 z-20 flex items-center gap-1.5 rounded-full bg-red-500/90 px-2.5 py-0.5 backdrop-blur">
+              <div className="absolute right-3 bottom-16 z-20 flex items-center gap-1.5 rounded-full bg-red-500/90 px-2.5 py-0.5 backdrop-blur">
                 <motion.span
                   animate={{ opacity: [1, 0.3, 1] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
@@ -435,8 +239,8 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
             )}
 
             {/* Caption */}
-            <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-navy via-navy/80 to-transparent p-4 pt-12">
-              <p className="text-center text-sm font-semibold text-cream/90 sm:text-base">
+            <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 to-transparent p-4 pt-12">
+              <p className="text-center text-sm font-semibold text-white sm:text-base">
                 {scene.caption}
               </p>
             </div>
@@ -458,19 +262,19 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
             )}
           </div>
 
-          {/* Progress bar */}
-          <div className="mt-4 w-full max-w-3xl">
+          {/* Progress bar (synced to audio) */}
+          <div className="w-full max-w-3xl">
             <div className="relative h-1.5 overflow-hidden rounded-full bg-cream/20">
               <motion.div
                 className="absolute left-0 top-0 h-full rounded-full bg-turquoise"
                 style={{ width: `${progress}%` }}
-                transition={{ duration: 0.15 }}
+                transition={{ duration: 0.1 }}
               />
             </div>
           </div>
 
           {/* Scene dots */}
-          <div className="mt-3 flex items-center gap-2">
+          <div className="flex items-center gap-2">
             {scenes.map((s, i) => (
               <button
                 key={s.id}
@@ -496,20 +300,11 @@ export function LessonPlayer({ scenes, missionId, nextScreen }: Props) {
             <Button size="icon" variant="ghost" onClick={replay} aria-label="Replay" className="text-cream hover:bg-cream/10">
               <RotateCcw className="h-5 w-5" />
             </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => {
-                const next = !soundOn
-                setSoundOn(next)
-                if (!next && typeof window !== 'undefined' && window.speechSynthesis) {
-                  window.speechSynthesis.cancel()
-                }
-              }}
-              aria-label={soundOn ? 'Mute' : 'Unmute'}
-              className="text-cream hover:bg-cream/10"
-            >
+            <Button size="icon" variant="ghost" onClick={toggleMute} aria-label={soundOn ? 'Mute' : 'Unmute'} className="text-cream hover:bg-cream/10">
               {soundOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+            </Button>
+            <Button size="icon" variant="ghost" onClick={toggleFullscreen} aria-label="Fullscreen" className="text-cream hover:bg-cream/10">
+              <Maximize2 className="h-5 w-5" />
             </Button>
           </div>
 
