@@ -5,6 +5,7 @@ import { ThemeProvider } from 'next-themes'
 import { Toaster } from 'sonner'
 import { useApp, initPrefsFromStorage } from '@/lib/store'
 import { api } from '@/lib/api'
+import { getQueuedEvents, clearQueuedEvents } from '@/lib/offline'
 import { Mascot } from '@/components/ui/mascot'
 import { HelpButton } from '@/components/ui/help-button'
 import { WelcomeScreen } from '@/components/screens/WelcomeScreen'
@@ -103,6 +104,8 @@ export default function Page() {
   React.useEffect(() => {
     let cancelled = false
     initPrefsFromStorage()
+    // Refresh queue count on load
+    useApp.getState().refreshQueueCount()
     ;(async () => {
       try {
         const res = await api<{ learner: any; state: any }>('/api/auth/me')
@@ -110,8 +113,25 @@ export default function Page() {
         if (res?.learner) {
           setLearner(res.learner)
           if (res.state) setState(res.state)
+          // Try to sync any queued events now that we're logged in
+          try {
+            const queued = getQueuedEvents()
+            if (queued.length > 0) {
+              const syncRes = await api('/api/progress', { method: 'POST', json: { events: queued } })
+              if (syncRes?.accepted) clearQueuedEvents(syncRes.accepted)
+              if (syncRes?.skipped) clearQueuedEvents(syncRes.skipped)
+              if (syncRes?.state) setState(syncRes.state)
+              useApp.getState().refreshQueueCount()
+            }
+          } catch {}
           setScreen('mission-map')
         } else {
+          // Not logged in — clear any stuck queue items (they can't be synced)
+          const queued = getQueuedEvents()
+          if (queued.length > 0) {
+            clearQueuedEvents(queued.map((e) => e.eventId))
+            useApp.getState().refreshQueueCount()
+          }
           setScreen('welcome')
         }
       } catch {
